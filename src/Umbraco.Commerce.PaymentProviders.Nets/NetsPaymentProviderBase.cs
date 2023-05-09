@@ -17,15 +17,13 @@ namespace Umbraco.Commerce.PaymentProviders
         where TSelf : NetsPaymentProviderBase<TSelf, TSettings>
         where TSettings : NetsSettingsBase, new()
     {
-#pragma warning disable IDE1006 // Naming Styles
-        protected readonly ILogger<TSelf> _logger;
-#pragma warning restore IDE1006 // Naming Styles
+        protected ILogger<TSelf> Logger { get; }
 
         public NetsPaymentProviderBase(UmbracoCommerceContext ctx,
             ILogger<TSelf> logger)
             : base(ctx)
         {
-            _logger = logger;
+            Logger = logger;
         }
 
         public override string GetCancelUrl(PaymentProviderContext<TSettings> ctx)
@@ -89,7 +87,7 @@ namespace Umbraco.Commerce.PaymentProviders
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error(ex, "Nets Easy - GetNetsWebhookEvent");
+                    Logger.Error(ex, "Nets Easy - GetNetsWebhookEvent");
                 }
             }
 

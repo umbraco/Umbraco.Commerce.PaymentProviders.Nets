@@ -421,7 +421,7 @@ namespace Umbraco.Commerce.PaymentProviders
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Nets Easy - error creating payment.");
+                Logger.Error(ex, "Nets Easy - error creating payment.");
             }
 
             var checkoutKey = ctx.Settings.TestMode ? ctx.Settings.TestCheckoutKey : ctx.Settings.LiveCheckoutKey;
@@ -520,7 +520,7 @@ namespace Umbraco.Commerce.PaymentProviders
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Nets Easy - ProcessCallback");
+                Logger.Error(ex, "Nets Easy - ProcessCallback");
             }
 
             return CallbackResult.BadRequest();
@@ -553,7 +553,7 @@ namespace Umbraco.Commerce.PaymentProviders
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Nets Easy - FetchPaymentStatus");
+                Logger.Error(ex, "Nets Easy - FetchPaymentStatus");
             }
 
             return ApiResult.Empty;
@@ -589,7 +589,7 @@ namespace Umbraco.Commerce.PaymentProviders
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Nets Easy - CancelPayment");
+                Logger.Error(ex, "Nets Easy - CancelPayment");
             }
 
             return ApiResult.Empty;
@@ -630,7 +630,7 @@ namespace Umbraco.Commerce.PaymentProviders
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Nets Easy - CapturePayment");
+                Logger.Error(ex, "Nets Easy - CapturePayment");
             }
 
             return ApiResult.Empty;
@@ -673,7 +673,7 @@ namespace Umbraco.Commerce.PaymentProviders
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Nets Easy - RefundPayment");
+                Logger.Error(ex, "Nets Easy - RefundPayment");
             }
 
             return ApiResult.Empty;
