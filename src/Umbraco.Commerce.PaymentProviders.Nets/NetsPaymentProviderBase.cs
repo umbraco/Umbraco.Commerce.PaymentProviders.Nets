@@ -71,7 +71,7 @@ namespace Umbraco.Commerce.PaymentProviders
 
                         using (var reader = new StreamReader(stream))
                         {
-                            var json = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+                            var json = await reader.ReadToEndAsync().ConfigureAwait(false);
 
                             if (!string.IsNullOrEmpty(json))
                             {
