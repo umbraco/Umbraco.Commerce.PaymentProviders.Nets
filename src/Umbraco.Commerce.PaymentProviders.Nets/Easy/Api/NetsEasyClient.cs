@@ -1,5 +1,5 @@
 using Flurl.Http;
-using Flurl.Http.Configuration;
+using Flurl.Http.Newtonsoft;
 using Newtonsoft.Json;
 using System;
 using System.Threading;
@@ -21,7 +21,7 @@ namespace Umbraco.Commerce.PaymentProviders.Api
         {
             return await RequestAsync("/v1/payments/", async (req, ct) => await req
                 .WithHeader("Content-Type", "application/json")
-                .PostJsonAsync(data, ct)
+                .PostJsonAsync(data, cancellationToken: ct)
                 .ReceiveJson<NetsPaymentResult>().ConfigureAwait(false),
                 cancellationToken).ConfigureAwait(false);
         }
@@ -29,7 +29,7 @@ namespace Umbraco.Commerce.PaymentProviders.Api
         public async Task<NetsPaymentDetails> GetPaymentAsync(string paymentId, CancellationToken cancellationToken = default)
         {
             return await RequestAsync($"/v1/payments/{paymentId}", async (req, ct) => await req
-                .GetJsonAsync<NetsPaymentDetails>().ConfigureAwait(false),
+                .GetJsonAsync<NetsPaymentDetails>(cancellationToken: ct).ConfigureAwait(false),
                 cancellationToken).ConfigureAwait(false);
         }
 
@@ -37,7 +37,7 @@ namespace Umbraco.Commerce.PaymentProviders.Api
         {
             return await RequestAsync($"/v1/payments/{paymentId}/cancels", async (req, ct) => await req
                 .WithHeader("Content-Type", "application/json")
-                .PostJsonAsync(data, ct)
+                .PostJsonAsync(data, cancellationToken: ct)
                 .ReceiveJson<string>().ConfigureAwait(false),
                 cancellationToken).ConfigureAwait(false);
         }
@@ -46,7 +46,7 @@ namespace Umbraco.Commerce.PaymentProviders.Api
         {
             return await RequestAsync($"/v1/payments/{paymentId}/charges", async (req, ct) => await req
                 .WithHeader("Content-Type", "application/json")
-                .PostJsonAsync(data, ct)
+                .PostJsonAsync(data, cancellationToken: ct)
                 .ReceiveJson<NetsCharge>().ConfigureAwait(false),
                 cancellationToken).ConfigureAwait(false);
         }
@@ -55,7 +55,7 @@ namespace Umbraco.Commerce.PaymentProviders.Api
         {
             return await RequestAsync($"/v1/charges/{chargeId}/refunds", async (req, ct) => await req
                 .WithHeader("Content-Type", "application/json")
-                .PostJsonAsync(data, ct)
+                .PostJsonAsync(data, cancellationToken: ct)
                 .ReceiveJson<NetsRefund>().ConfigureAwait(false),
                 cancellationToken).ConfigureAwait(false);
         }
@@ -67,7 +67,7 @@ namespace Umbraco.Commerce.PaymentProviders.Api
             try
             {
                 var req = new FlurlRequest(_config.BaseUrl + url)
-                        .ConfigureRequest(x =>
+                        .WithSettings(x =>
                         {
                             var jsonSettings = new JsonSerializerSettings
                             {
