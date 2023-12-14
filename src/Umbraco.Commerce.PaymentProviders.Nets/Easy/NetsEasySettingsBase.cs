@@ -40,7 +40,7 @@ namespace Umbraco.Commerce.PaymentProviders
         public string ShippingAddressCityPropertyAlias { get; set; }
 
         [PaymentProviderSetting(Name = "Terms URL",
-            Description = "The URL to the terms and conditions of your webshop.",
+            Description = "[Required] The URL to the terms and conditions of your webshop.",
             SortOrder = 1700)]
         public string TermsUrl { get; set; }
 

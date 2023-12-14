@@ -5,7 +5,7 @@ namespace Umbraco.Commerce.PaymentProviders
     public class NetsSettingsBase
     {
         [PaymentProviderSetting(Name = "Continue URL",
-            Description = "The URL to continue to after this provider has done processing. eg: /continue/",
+            Description = "[Required] The URL to continue to after this provider has done processing. eg: /continue/",
             SortOrder = 100)]
         public string ContinueUrl { get; set; }
 
