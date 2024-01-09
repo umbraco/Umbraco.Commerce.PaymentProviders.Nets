@@ -1,15 +1,15 @@
-using Newtonsoft.Json;
 using System;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Umbraco.Commerce.Common.Logging;
-using Umbraco.Commerce.PaymentProviders.Api.Models;
 using Umbraco.Commerce.Core.Api;
 using Umbraco.Commerce.Core.PaymentProviders;
 using Umbraco.Commerce.Extensions;
-using System.Threading;
+using Umbraco.Commerce.PaymentProviders.Api.Models;
 
 namespace Umbraco.Commerce.PaymentProviders
 {
@@ -19,7 +19,8 @@ namespace Umbraco.Commerce.PaymentProviders
     {
         protected ILogger<TSelf> Logger { get; }
 
-        public NetsPaymentProviderBase(UmbracoCommerceContext ctx,
+        protected NetsPaymentProviderBase(
+            UmbracoCommerceContext ctx,
             ILogger<TSelf> logger)
             : base(ctx)
         {
@@ -78,7 +79,7 @@ namespace Umbraco.Commerce.PaymentProviders
                                 // Verify "Authorization" header returned from webhook
                                 VerifyAuthorization(ctx.Request, webhookAuthorization);
 
-                                netsWebhookEvent = JsonConvert.DeserializeObject<NetsWebhookEvent>(json);
+                                netsWebhookEvent = JsonSerializer.Deserialize<NetsWebhookEvent>(json);
 
                                 ctx.AdditionalData.Add("Vendr_NetsEasyWebhookEvent", netsWebhookEvent);
                             }

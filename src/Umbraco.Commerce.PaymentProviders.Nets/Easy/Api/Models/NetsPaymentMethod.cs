@@ -1,43 +1,43 @@
-﻿using Newtonsoft.Json;
+﻿using System.Text.Json.Serialization;
 
 namespace Umbraco.Commerce.PaymentProviders.Api.Models
 {
     public class NetsPaymentMethod
     {
-        [JsonProperty("name")]
+        [JsonPropertyName("name")]
         public string Name { get; set; }
 
-        [JsonProperty("fee")]
+        [JsonPropertyName("fee")]
         public NetsPaymentFee Fee { get; set; }
     }
 
     public class NetsPaymentFee
     {
-        [JsonProperty("reference")]
+        [JsonPropertyName("reference")]
         public string Reference { get; set; }
 
-        [JsonProperty("name")]
+        [JsonPropertyName("name")]
         public string Name { get; set; }
 
-        [JsonProperty("quantity")]
+        [JsonPropertyName("quantity")]
         public int Quantity { get; set; }
 
-        [JsonProperty("unit")]
+        [JsonPropertyName("unit")]
         public string Unit { get; set; }
 
-        [JsonProperty("unitPrice")]
+        [JsonPropertyName("unitPrice")]
         public int UnitPrice { get; set; }
 
-        [JsonProperty("taxRate")]
+        [JsonPropertyName("taxRate")]
         public int TaxRate { get; set; }
 
-        [JsonProperty("taxAmount")]
+        [JsonPropertyName("taxAmount")]
         public int TaxAmount { get; set; }
 
-        [JsonProperty("grossTotalAmount")]
+        [JsonPropertyName("grossTotalAmount")]
         public int GrossTotalAmount { get; set; }
 
-        [JsonProperty("netTotalAmount")]
+        [JsonPropertyName("netTotalAmount")]
         public int NetTotalAmount { get; set; }
     }
 }

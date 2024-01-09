@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+﻿using System.Text.Json.Serialization;
 
 namespace Umbraco.Commerce.PaymentProviders.Api.Models
 {
@@ -7,25 +7,25 @@ namespace Umbraco.Commerce.PaymentProviders.Api.Models
         /// <summary>
         /// A reference to recognize this order. Usually a number sequence (order number).
         /// </summary>
-        [JsonProperty("reference")]
+        [JsonPropertyName("reference")]
         public string Reference { get; set; }
 
         /// <summary>
         /// The currency of the payment, for example 'DKK'.
         /// </summary>
-        [JsonProperty("currency")]
+        [JsonPropertyName("currency")]
         public string Currency { get; set; }
 
         /// <summary>
         /// The total amount of the order including VAT, if any. (Sum of all grossTotalAmounts in the order.)
         /// </summary>
-        [JsonProperty("amount")]
+        [JsonPropertyName("amount")]
         public int Amount { get; set; }
 
         /// <summary>
         /// A list of order items. At least one item must be specified.
         /// </summary>
-        [JsonProperty("items")]
+        [JsonPropertyName("items")]
         public NetsOrderItem[] Items { get; set; }
     }
 }
