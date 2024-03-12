@@ -1,53 +1,53 @@
-﻿using Newtonsoft.Json;
+﻿using System.Text.Json.Serialization;
 using System;
 
 namespace Umbraco.Commerce.PaymentProviders.Api.Models
 {
     public class NetsPaymentDetails
     {
-        [JsonProperty("payment")]
+        [JsonPropertyName("payment")]
         public NetsPayment Payment { get; set; }
     }
 
     public class NetsPayment : NetsPaymentBase
     {
-        [JsonProperty("created")]
+        [JsonPropertyName("created")]
         public DateTime Created { get; set; }
 
-        [JsonProperty("paymentId")]
+        [JsonPropertyName("paymentId")]
         public string PaymentId { get; set; }
 
-        [JsonProperty("orderDetails")]
+        [JsonPropertyName("orderDetails")]
         public NetsOrderDetails OrderDetails { get; set; }
 
-        [JsonProperty("summary")]
+        [JsonPropertyName("summary")]
         public NetsSummary Summary { get; set; }
     }
 
     public class NetsOrderDetails
     {
-        [JsonProperty("amount")]
+        [JsonPropertyName("amount")]
         public int Amount { get; set; }
 
-        [JsonProperty("currency")]
+        [JsonPropertyName("currency")]
         public string Currency { get; set; }
 
-        [JsonProperty("reference")]
+        [JsonPropertyName("reference")]
         public string Reference { get; set; }
     }
 
     public class NetsSummary
     {
-        [JsonProperty("cancelledAmount")]
+        [JsonPropertyName("cancelledAmount")]
         public int CancelledAmount { get; set; }
 
-        [JsonProperty("chargedAmount")]
+        [JsonPropertyName("chargedAmount")]
         public int ChargedAmount { get; set; }
 
-        [JsonProperty("refundedAmount")]
+        [JsonPropertyName("refundedAmount")]
         public int RefundedAmount { get; set; }
 
-        [JsonProperty("reservedAmount")]
+        [JsonPropertyName("reservedAmount")]
         public int ReservedAmount { get; set; }
     }
 }

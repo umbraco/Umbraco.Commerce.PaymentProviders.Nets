@@ -1,16 +1,16 @@
-﻿using Newtonsoft.Json;
+﻿using System.Text.Json.Serialization;
 
 namespace Umbraco.Commerce.PaymentProviders.Api.Models
 {
     public class NetsPaymentBase
     {
-        [JsonProperty("checkout")]
+        [JsonPropertyName("checkout")]
         public NetsPaymentCheckout Checkout { get; set; }
     }
 
     public class NetsPaymentCheckout
     {
-        [JsonProperty("url")]
+        [JsonPropertyName("url")]
         public string Url { get; set; }
     }
 }

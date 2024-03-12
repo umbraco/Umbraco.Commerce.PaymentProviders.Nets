@@ -1,18 +1,17 @@
-using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
 using Umbraco.Commerce.Common.Logging;
-using Umbraco.Commerce.PaymentProviders.Api;
-using Umbraco.Commerce.PaymentProviders.Api.Models;
+using Umbraco.Commerce.Core.Api;
 using Umbraco.Commerce.Core.Models;
 using Umbraco.Commerce.Core.PaymentProviders;
-using System.Threading;
-using Umbraco.Commerce.Core.Api;
+using Umbraco.Commerce.PaymentProviders.Api;
+using Umbraco.Commerce.PaymentProviders.Api.Models;
 
 namespace Umbraco.Commerce.PaymentProviders
 {
@@ -444,16 +443,16 @@ namespace Umbraco.Commerce.PaymentProviders
                 // Process callback
 
                 var webhookAuthKey = ctx.Order.Properties["netsEasyWebhookAuthKey"]?.Value;
-                
+
                 var clientConfig = GetNetsEasyClientConfig(ctx.Settings);
                 var client = new NetsEasyClient(clientConfig);
 
                 var netsEvent = await GetNetsWebhookEventAsync(ctx, webhookAuthKey, cancellationToken).ConfigureAwait(false);
                 if (netsEvent != null)
                 {
-                    var paymentId = netsEvent.Data?.SelectToken("paymentId")?.Value<string>();
+                    var paymentId = netsEvent.Data?["paymentId"]?.GetValue<string>();
 
-                    var payment = !string.IsNullOrEmpty(paymentId) ? await client.GetPaymentAsync(paymentId, cancellationToken).ConfigureAwait(false) : null;
+                    NetsPaymentDetails payment = !string.IsNullOrEmpty(paymentId) ? await client.GetPaymentAsync(paymentId, cancellationToken).ConfigureAwait(false) : null;
                     if (payment != null)
                     {
                         var amount = (long)payment.Payment.OrderDetails.Amount;
@@ -469,7 +468,7 @@ namespace Umbraco.Commerce.PaymentProviders
                         }
                         else if (netsEvent.Event == NetsEvents.PaymentChargeCreated)
                         {
-                            var chargeId = netsEvent.Data?.SelectToken("chargeId")?.Value<string>();
+                            var chargeId = netsEvent.Data?["chargeId"]?.GetValue<string>();
 
                             return CallbackResult.Ok(
                                 new TransactionInfo
@@ -485,7 +484,7 @@ namespace Umbraco.Commerce.PaymentProviders
                         }
                         else if (netsEvent.Event == NetsEvents.PaymentCancelCreated)
                         {
-                            var cancelId = netsEvent.Data?.SelectToken("cancelId")?.Value<string>();
+                            var cancelId = netsEvent.Data?["cancelId"]?.GetValue<string>();
 
                             return CallbackResult.Ok(
                                 new TransactionInfo
@@ -501,7 +500,7 @@ namespace Umbraco.Commerce.PaymentProviders
                         }
                         else if (netsEvent.Event == NetsEvents.PaymentRefundCompleted)
                         {
-                            var refundId = netsEvent.Data?.SelectToken("refundId")?.Value<string>();
+                            var refundId = netsEvent.Data?["refundId"]?.GetValue<string>();
 
                             return CallbackResult.Ok(
                                 new TransactionInfo
