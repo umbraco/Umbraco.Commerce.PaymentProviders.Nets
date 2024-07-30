@@ -15,7 +15,7 @@ using Umbraco.Commerce.PaymentProviders.Api.Models;
 
 namespace Umbraco.Commerce.PaymentProviders
 {
-    [PaymentProvider("nets-easy-checkout-onetime", "Nets Easy (One Time)", "Nets Easy payment provider for one time payments")]
+    [PaymentProvider("nets-easy-checkout-onetime")]
     public class NetsEasyOneTimePaymentProvider : NetsPaymentProviderBase<NetsEasyOneTimePaymentProvider, NetsEasyOneTimeSettings>
     {
         public NetsEasyOneTimePaymentProvider(UmbracoCommerceContext ctx, ILogger<NetsEasyOneTimePaymentProvider> logger)
@@ -32,11 +32,11 @@ namespace Umbraco.Commerce.PaymentProviders
 
         public override IEnumerable<TransactionMetaDataDefinition> TransactionMetaDataDefinitions => new[]
         {
-            new TransactionMetaDataDefinition("netsEasyPaymentId", "Nets (Easy) Payment ID"),
-            new TransactionMetaDataDefinition("netsEasyChargeId", "Nets (Easy) Charge ID"),
-            new TransactionMetaDataDefinition("netsEasyRefundId", "Nets (Easy) Refund ID"),
-            new TransactionMetaDataDefinition("netsEasyCancelId", "Nets (Easy) Cancel ID"),
-            new TransactionMetaDataDefinition("netsEasyWebhookAuthKey", "Nets (Easy) Webhook Authorization")
+            new TransactionMetaDataDefinition("netsEasyPaymentId"),
+            new TransactionMetaDataDefinition("netsEasyChargeId"),
+            new TransactionMetaDataDefinition("netsEasyRefundId"),
+            new TransactionMetaDataDefinition("netsEasyCancelId"),
+            new TransactionMetaDataDefinition("netsEasyWebhookAuthKey")
         };
 
         public override async Task<PaymentFormResult> GenerateFormAsync(PaymentProviderContext<NetsEasyOneTimeSettings> ctx, CancellationToken cancellationToken = default)

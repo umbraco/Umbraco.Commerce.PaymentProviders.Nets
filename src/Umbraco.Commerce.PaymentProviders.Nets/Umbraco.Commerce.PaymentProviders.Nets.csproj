@@ -1,8 +1,10 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.Razor">
 
     <PropertyGroup>
       <Title>Umbraco Commerce Nets Payment Provider</Title>
       <Description>Nets payment provider for Umbraco Commerce</Description>
+      <StaticWebAssetBasePath>App_Plugins/UmbracoCommerceNetsPaymentProvider</StaticWebAssetBasePath>
+      <NoWarn>CA2007</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>

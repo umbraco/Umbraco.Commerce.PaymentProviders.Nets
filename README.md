@@ -2,4 +2,6 @@
 
 Nets Payment Provider for Umbraco Commerce
 
-Documentation: https://docs.umbraco.com/umbraco-commerce-payment-providers/nets/nets
+- Documentation: https://docs.umbraco.com/umbraco-commerce-payment-providers/nets/nets
+- Release notes: https://github.com/umbraco/Umbraco.Commerce.PaymentProviders.Nets/releases
+
