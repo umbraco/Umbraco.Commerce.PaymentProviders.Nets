@@ -479,4 +479,6 @@ $RECYCLE.BIN/
 ##
 ## Umbraco Commerce specific
 ##
-/src/Umbraco.Commerce.PaymentProviders.Nets/packages.lock.json
+**/packages.lock.json
+/tests/Umbraco.Commerce.PaymentProviders.Nets.UnitTests/packages.lock.json
+
