@@ -41,7 +41,7 @@ namespace Umbraco.Commerce.PaymentProviders
 
         public override async Task<PaymentFormResult> GenerateFormAsync(PaymentProviderContext<NetsEasyOneTimeSettings> ctx, CancellationToken cancellationToken = default)
         {
-            var currency = Context.Services.CurrencyService.GetCurrency(ctx.Order.CurrencyId);
+            var currency = await Context.Services.CurrencyService.GetCurrencyAsync(ctx.Order.CurrencyId);
             var currencyCode = currency.Code.ToUpperInvariant();
 
             // Ensure currency has valid ISO 4217 code
@@ -58,7 +58,7 @@ namespace Umbraco.Commerce.PaymentProviders
                    .ToArray();
 
             var paymentMethodId = ctx.Order.PaymentInfo.PaymentMethodId;
-            var paymentMethod = paymentMethodId != null ? Context.Services.PaymentMethodService.GetPaymentMethod(paymentMethodId.Value) : null;
+            var paymentMethod = paymentMethodId != null ? await Context.Services.PaymentMethodService.GetPaymentMethodAsync(paymentMethodId.Value) : null;
 
             string paymentId = string.Empty;
             string paymentFormLink = string.Empty;
@@ -83,7 +83,7 @@ namespace Umbraco.Commerce.PaymentProviders
                     NetTotalAmount = (int)AmountToMinorUnits(x.TotalPrice.Value.WithoutTax)
                 });
 
-                var shippingMethod = Context.Services.ShippingMethodService.GetShippingMethod(ctx.Order.ShippingInfo.ShippingMethodId.Value);
+                var shippingMethod = await Context.Services.ShippingMethodService.GetShippingMethodAsync(ctx.Order.ShippingInfo.ShippingMethodId.Value);
                 if (shippingMethod != null)
                 {
                     items = items.Append(new NetsOrderItem
@@ -253,7 +253,7 @@ namespace Umbraco.Commerce.PaymentProviders
                     : string.Empty;
 
                 var country = ctx.Order.ShippingInfo.CountryId.HasValue
-                    ? Context.Services.CountryService.GetCountry(ctx.Order.ShippingInfo.CountryId.Value)
+                    ? await Context.Services.CountryService.GetCountryAsync(ctx.Order.ShippingInfo.CountryId.Value)
                     : null;
 
                 var region = country != null ? new RegionInfo(country.Code) : null;
