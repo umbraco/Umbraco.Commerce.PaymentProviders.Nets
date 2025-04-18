@@ -4,7 +4,7 @@
       <Title>Umbraco Commerce Nets Payment Provider</Title>
       <Description>Nets payment provider for Umbraco Commerce</Description>
       <StaticWebAssetBasePath>App_Plugins/UmbracoCommerceNetsPaymentProvider</StaticWebAssetBasePath>
-      <NoWarn>CA2007</NoWarn>
+      <NoWarn>CA2007;IDE0290;IDE0022;</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>
