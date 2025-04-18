@@ -10,21 +10,32 @@ using Umbraco.Commerce.Common.Logging;
 using Umbraco.Commerce.Core.Api;
 using Umbraco.Commerce.Core.Models;
 using Umbraco.Commerce.Core.PaymentProviders;
+using Umbraco.Commerce.Core.Services;
+using Umbraco.Commerce.Extensions;
 using Umbraco.Commerce.PaymentProviders.Api;
 using Umbraco.Commerce.PaymentProviders.Api.Models;
+using Umbraco.Commerce.PaymentProviders.Nets;
 
 namespace Umbraco.Commerce.PaymentProviders
 {
     [PaymentProvider("nets-easy-checkout-onetime")]
     public class NetsEasyOneTimePaymentProvider : NetsPaymentProviderBase<NetsEasyOneTimePaymentProvider, NetsEasyOneTimeSettings>
     {
-        public NetsEasyOneTimePaymentProvider(UmbracoCommerceContext ctx, ILogger<NetsEasyOneTimePaymentProvider> logger)
+        private readonly IStoreService _storeService;
+
+        public NetsEasyOneTimePaymentProvider(
+            UmbracoCommerceContext ctx,
+            ILogger<NetsEasyOneTimePaymentProvider> logger,
+            IStoreService storeService)
             : base(ctx, logger)
-        { }
+        {
+            _storeService = storeService;
+        }
 
         public override bool CanCancelPayments => true;
         public override bool CanCapturePayments => true;
         public override bool CanRefundPayments => true;
+        public override bool CanPartiallyRefundPayments => true;
         public override bool CanFetchPaymentStatus => true;
 
         // We'll finalize via webhook callback
@@ -47,7 +58,7 @@ namespace Umbraco.Commerce.PaymentProviders
             // Ensure currency has valid ISO 4217 code
             if (!Iso4217.CurrencyCodes.ContainsKey(currencyCode))
             {
-                throw new Exception("Currency must be a valid ISO 4217 currency code: " + currency.Name);
+                throw new NetsPaymentProviderGeneralException("Currency must be a valid ISO 4217 currency code: " + currency.Name);
             }
 
             var orderAmount = AmountToMinorUnits(ctx.Order.TransactionAmount.Value);
@@ -507,7 +518,8 @@ namespace Umbraco.Commerce.PaymentProviders
                                 {
                                     TransactionId = paymentId,
                                     AmountAuthorized = AmountFromMinorUnits(amount),
-                                    PaymentStatus = GetPaymentStatus(payment)
+                                    PaymentStatus = await ctx.Order.CalculateRefundableAmountAsync() > 0 ?
+                                        PaymentStatus.PartiallyRefunded : PaymentStatus.Refunded,
                                 },
                                 new Dictionary<string, string>
                                 {
@@ -635,25 +647,68 @@ namespace Umbraco.Commerce.PaymentProviders
             return ApiResult.Empty;
         }
 
+        [Obsolete("Will be removed in v17. Use the overload that receives an order refund request.")]
         public override async Task<ApiResult> RefundPaymentAsync(PaymentProviderContext<NetsEasyOneTimeSettings> ctx, CancellationToken cancellationToken = default)
         {
+            ArgumentNullException.ThrowIfNull(ctx);
+
+            StoreReadOnly store = await _storeService.GetStoreAsync(ctx.Order.StoreId);
+            Amount refundAmount = store.CanRefundTransactionFee ? ctx.Order.TransactionInfo.AmountAuthorized + ctx.Order.TransactionInfo.TransactionFee : ctx.Order.TransactionInfo.AmountAuthorized;
+            return await this.RefundPaymentAsync(
+                ctx,
+                new PaymentProviderOrderRefundRequest
+                {
+                    RefundAmount = refundAmount,
+                    Orderlines = [],
+                },
+                cancellationToken);
+        }
+
+        public override async Task<ApiResult> RefundPaymentAsync(PaymentProviderContext<NetsEasyOneTimeSettings> context, PaymentProviderOrderRefundRequest refundRequest, CancellationToken cancellationToken = default)
+        {
             // Refund payment: https://tech.netspayment.com/easy/api/paymentapi#refundPayment
+            ArgumentNullException.ThrowIfNull(context);
+            ArgumentNullException.ThrowIfNull(refundRequest);
 
             try
             {
-                var clientConfig = GetNetsEasyClientConfig(ctx.Settings);
-                var client = new NetsEasyClient(clientConfig);
+                NetsEasyClientConfig clientConfig = GetNetsEasyClientConfig(context.Settings);
+                NetsEasyClient client = new(clientConfig);
 
-                var transactionId = ctx.Order.TransactionInfo.TransactionId;
-                var chargeId = ctx.Order.Properties["netsEasyChargeId"]?.Value;
+                string transactionId = context.Order.TransactionInfo.TransactionId;
+                string chargeId = context.Order.Properties["netsEasyChargeId"]?.Value;
+
+                var refundedOrderLineWithQuantities = (from orderLine in context.Order.OrderLines
+                                                       join refundedOrderLine in refundRequest.Orderlines on orderLine.Id equals refundedOrderLine.OrderLineId
+                                                       select new
+                                                       {
+                                                           OrderLine = orderLine,
+                                                           RefundedQuantity = refundedOrderLine.Quantity,
+                                                       }).ToList();
+
+                IEnumerable<NetsOrderItem> refundItems = [
+                    new NetsOrderItem
+                    {
+                        Reference = "refund",
+                        Name = "refund",
+                        Quantity = 1,
+                        Unit = "pcs",
+                        UnitPrice = (int)AmountToMinorUnits(refundRequest.RefundAmount),
+                        TaxRate = 0,
+                        TaxAmount = 0,
+                        GrossTotalAmount = (int)AmountToMinorUnits(refundRequest.RefundAmount),
+                        NetTotalAmount = (int)AmountToMinorUnits(refundRequest.RefundAmount),
+                    },
+                ];
 
                 var data = new
                 {
-                    invoice = ctx.Order.OrderNumber,
-                    amount = AmountToMinorUnits(ctx.Order.TransactionInfo.AmountAuthorized.Value)
+                    invoice = context.Order.OrderNumber,
+                    amount = AmountToMinorUnits(refundRequest.RefundAmount),
+                    orderItems = refundItems,
                 };
 
-                var result = await client.RefundPaymentAsync(chargeId, data, cancellationToken).ConfigureAwait(false);
+                NetsRefund result = await client.RefundPaymentAsync(chargeId, data, cancellationToken).ConfigureAwait(false);
                 if (result != null)
                 {
                     return new ApiResult()
@@ -665,8 +720,9 @@ namespace Umbraco.Commerce.PaymentProviders
                         TransactionInfo = new TransactionInfoUpdate()
                         {
                             TransactionId = transactionId,
-                            PaymentStatus = PaymentStatus.Refunded
-                        }
+                            PaymentStatus = await context.Order.CalculateRefundableAmountAsync() == refundRequest.RefundAmount ?
+                                PaymentStatus.Refunded : PaymentStatus.PartiallyRefunded,
+                        },
                     };
                 }
             }
