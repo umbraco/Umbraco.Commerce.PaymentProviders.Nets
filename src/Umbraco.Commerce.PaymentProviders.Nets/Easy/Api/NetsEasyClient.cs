@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Net;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
@@ -62,8 +64,6 @@ namespace Umbraco.Commerce.PaymentProviders.Api
 
         private async Task<TResult> RequestAsync<TResult>(string url, Func<IFlurlRequest, CancellationToken, Task<TResult>> func, CancellationToken cancellationToken = default)
         {
-            var result = default(TResult);
-
             try
             {
                 var req = new FlurlRequest(_config.BaseUrl + url)
@@ -78,14 +78,61 @@ namespace Umbraco.Commerce.PaymentProviders.Api
                         })
                         .WithHeader("Authorization", _config.Authorization);
 
-                result = await func.Invoke(req, cancellationToken).ConfigureAwait(false);
+                return await func.Invoke(req, cancellationToken).ConfigureAwait(false);
             }
             catch (FlurlHttpException ex)
             {
-                throw;
-            }
+                HttpStatusCode statusCode = ex.StatusCode.HasValue ? (HttpStatusCode)ex.StatusCode.Value : HttpStatusCode.BadRequest;
 
-            return result;
+                if (statusCode == HttpStatusCode.Unauthorized)
+                {
+                    throw new NetsApiException(HttpStatusCode.Unauthorized, new NetsErrorResponse
+                    {
+                        Errors = new Dictionary<string, List<string>> { { "Authorization", new List<string> { "Unauthorized request - Missing or invalid secret." } } }
+                    });
+                }
+
+                if (statusCode == HttpStatusCode.InternalServerError)
+                {
+                    NetsServerErrorResponse netsServerErrorResponse = null;
+                    try
+                    {
+                        netsServerErrorResponse = await ex.GetResponseJsonAsync<NetsServerErrorResponse>().ConfigureAwait(false);
+                    }
+                    catch
+                    {
+                        netsServerErrorResponse = new NetsServerErrorResponse
+                        {
+                            Message = "An unexpected internal server error occurred.",
+                            Code = "Unknown",
+                            Source = "Unknown"
+                        };
+                    }
+
+                    throw new NetsApiException(statusCode, netsServerErrorResponse);
+                }
+
+                if (statusCode == HttpStatusCode.BadRequest)
+                {
+                    NetsErrorResponse netsErrorResponse = null;
+                    try
+                    {
+                        netsErrorResponse = await ex.GetResponseJsonAsync<NetsErrorResponse>().ConfigureAwait(false);
+                    }
+                    catch
+                    {
+                        netsErrorResponse = new NetsErrorResponse
+                        {
+                            Errors = new Dictionary<string, List<string>> { { "UnknownError", new List<string> { "A validation error occurred, but details could not be retrieved." } } }
+                        };
+                    }
+
+                    throw new NetsApiException(statusCode, netsErrorResponse);
+                }
+
+                string rawResponse = await ex.GetResponseStringAsync().ConfigureAwait(false);
+                throw new NetsApiException($"Unexpected error from Nets API (Status {statusCode}): {rawResponse}");
+            }
         }
     }
 }
