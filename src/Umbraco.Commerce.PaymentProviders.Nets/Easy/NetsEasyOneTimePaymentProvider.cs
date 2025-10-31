@@ -647,23 +647,6 @@ namespace Umbraco.Commerce.PaymentProviders
             return ApiResult.Empty;
         }
 
-        [Obsolete("Will be removed in v17. Use the overload that receives an order refund request.")]
-        public override async Task<ApiResult> RefundPaymentAsync(PaymentProviderContext<NetsEasyOneTimeSettings> ctx, CancellationToken cancellationToken = default)
-        {
-            ArgumentNullException.ThrowIfNull(ctx);
-
-            StoreReadOnly store = await _storeService.GetStoreAsync(ctx.Order.StoreId);
-            Amount refundAmount = store.CanRefundTransactionFee ? ctx.Order.TransactionInfo.AmountAuthorized + ctx.Order.TransactionInfo.TransactionFee : ctx.Order.TransactionInfo.AmountAuthorized;
-            return await this.RefundPaymentAsync(
-                ctx,
-                new PaymentProviderOrderRefundRequest
-                {
-                    RefundAmount = refundAmount,
-                    Orderlines = [],
-                },
-                cancellationToken);
-        }
-
         public override async Task<ApiResult> RefundPaymentAsync(PaymentProviderContext<NetsEasyOneTimeSettings> context, PaymentProviderOrderRefundRequest refundRequest, CancellationToken cancellationToken = default)
         {
             // Refund payment: https://tech.netspayment.com/easy/api/paymentapi#refundPayment
