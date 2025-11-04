@@ -662,12 +662,12 @@ namespace Umbraco.Commerce.PaymentProviders
                 string chargeId = context.Order.Properties["netsEasyChargeId"]?.Value;
 
                 var refundedOrderLineWithQuantities = (from orderLine in context.Order.OrderLines
-                                                       join refundedOrderLine in refundRequest.Orderlines on orderLine.Id equals refundedOrderLine.OrderLineId
-                                                       select new
-                                                       {
-                                                           OrderLine = orderLine,
-                                                           RefundedQuantity = refundedOrderLine.Quantity,
-                                                       }).ToList();
+                   join refundedOrderLine in refundRequest.OrderLines on orderLine.Id equals refundedOrderLine.OrderLineId
+                   select new
+                   {
+                       OrderLine = orderLine,
+                       RefundedQuantity = refundedOrderLine.Quantity,
+                   }).ToList();
 
                 IEnumerable<NetsOrderItem> refundItems = [
                     new NetsOrderItem
