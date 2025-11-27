@@ -1,10 +1,10 @@
-﻿using Newtonsoft.Json;
+﻿using System.Text.Json.Serialization;
 
 namespace Umbraco.Commerce.PaymentProviders.Api.Models
 {
     public class NetsRefund
     {
-        [JsonProperty("refundId")]
+        [JsonPropertyName("refundId")]
         public string RefundId { get; set; }
     }
 }

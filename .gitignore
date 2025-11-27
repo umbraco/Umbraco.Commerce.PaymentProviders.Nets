@@ -3,6 +3,8 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 
+.idea
+
 # User-specific files
 *.rsuser
 *.suo
@@ -479,3 +481,6 @@ $RECYCLE.BIN/
 ##
 ## Umbraco Commerce specific
 ##
+**/packages.lock.json
+/tests/Umbraco.Commerce.PaymentProviders.Nets.UnitTests/packages.lock.json
+

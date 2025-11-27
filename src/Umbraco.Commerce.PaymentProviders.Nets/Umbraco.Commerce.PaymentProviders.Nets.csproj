@@ -1,14 +1,15 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.Razor">
 
     <PropertyGroup>
       <Title>Umbraco Commerce Nets Payment Provider</Title>
       <Description>Nets payment provider for Umbraco Commerce</Description>
+      <StaticWebAssetBasePath>App_Plugins/UmbracoCommerceNetsPaymentProvider</StaticWebAssetBasePath>
+      <NoWarn>CA2007;IDE0290;IDE0022;</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="Flurl.Http"/>
         <PackageReference Include="Umbraco.Commerce.Core" />
-        <PackageReference Include="Microsoft.AspNet.WebApi.Client" />
     </ItemGroup>
 
 </Project>

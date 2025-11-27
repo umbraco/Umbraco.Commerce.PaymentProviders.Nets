@@ -1,31 +1,41 @@
-using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
 using Umbraco.Commerce.Common.Logging;
-using Umbraco.Commerce.PaymentProviders.Api;
-using Umbraco.Commerce.PaymentProviders.Api.Models;
+using Umbraco.Commerce.Core.Api;
 using Umbraco.Commerce.Core.Models;
 using Umbraco.Commerce.Core.PaymentProviders;
-using System.Threading;
-using Umbraco.Commerce.Core.Api;
+using Umbraco.Commerce.Core.Services;
+using Umbraco.Commerce.Extensions;
+using Umbraco.Commerce.PaymentProviders.Api;
+using Umbraco.Commerce.PaymentProviders.Api.Models;
+using Umbraco.Commerce.PaymentProviders.Nets;
 
 namespace Umbraco.Commerce.PaymentProviders
 {
-    [PaymentProvider("nets-easy-checkout-onetime", "Nets Easy (One Time)", "Nets Easy payment provider for one time payments")]
+    [PaymentProvider("nets-easy-checkout-onetime")]
     public class NetsEasyOneTimePaymentProvider : NetsPaymentProviderBase<NetsEasyOneTimePaymentProvider, NetsEasyOneTimeSettings>
     {
-        public NetsEasyOneTimePaymentProvider(UmbracoCommerceContext ctx, ILogger<NetsEasyOneTimePaymentProvider> logger)
+        private readonly IStoreService _storeService;
+
+        public NetsEasyOneTimePaymentProvider(
+            UmbracoCommerceContext ctx,
+            ILogger<NetsEasyOneTimePaymentProvider> logger,
+            IStoreService storeService)
             : base(ctx, logger)
-        { }
+        {
+            _storeService = storeService;
+        }
 
         public override bool CanCancelPayments => true;
         public override bool CanCapturePayments => true;
         public override bool CanRefundPayments => true;
+        public override bool CanPartiallyRefundPayments => true;
         public override bool CanFetchPaymentStatus => true;
 
         // We'll finalize via webhook callback
@@ -33,22 +43,22 @@ namespace Umbraco.Commerce.PaymentProviders
 
         public override IEnumerable<TransactionMetaDataDefinition> TransactionMetaDataDefinitions => new[]
         {
-            new TransactionMetaDataDefinition("netsEasyPaymentId", "Nets (Easy) Payment ID"),
-            new TransactionMetaDataDefinition("netsEasyChargeId", "Nets (Easy) Charge ID"),
-            new TransactionMetaDataDefinition("netsEasyRefundId", "Nets (Easy) Refund ID"),
-            new TransactionMetaDataDefinition("netsEasyCancelId", "Nets (Easy) Cancel ID"),
-            new TransactionMetaDataDefinition("netsEasyWebhookAuthKey", "Nets (Easy) Webhook Authorization")
+            new TransactionMetaDataDefinition("netsEasyPaymentId"),
+            new TransactionMetaDataDefinition("netsEasyChargeId"),
+            new TransactionMetaDataDefinition("netsEasyRefundId"),
+            new TransactionMetaDataDefinition("netsEasyCancelId"),
+            new TransactionMetaDataDefinition("netsEasyWebhookAuthKey")
         };
 
         public override async Task<PaymentFormResult> GenerateFormAsync(PaymentProviderContext<NetsEasyOneTimeSettings> ctx, CancellationToken cancellationToken = default)
         {
-            var currency = Context.Services.CurrencyService.GetCurrency(ctx.Order.CurrencyId);
+            var currency = await Context.Services.CurrencyService.GetCurrencyAsync(ctx.Order.CurrencyId);
             var currencyCode = currency.Code.ToUpperInvariant();
 
             // Ensure currency has valid ISO 4217 code
             if (!Iso4217.CurrencyCodes.ContainsKey(currencyCode))
             {
-                throw new Exception("Currency must be a valid ISO 4217 currency code: " + currency.Name);
+                throw new NetsPaymentProviderGeneralException("Currency must be a valid ISO 4217 currency code: " + currency.Name);
             }
 
             var orderAmount = AmountToMinorUnits(ctx.Order.TransactionAmount.Value);
@@ -59,7 +69,7 @@ namespace Umbraco.Commerce.PaymentProviders
                    .ToArray();
 
             var paymentMethodId = ctx.Order.PaymentInfo.PaymentMethodId;
-            var paymentMethod = paymentMethodId != null ? Context.Services.PaymentMethodService.GetPaymentMethod(paymentMethodId.Value) : null;
+            var paymentMethod = paymentMethodId != null ? await Context.Services.PaymentMethodService.GetPaymentMethodAsync(paymentMethodId.Value) : null;
 
             string paymentId = string.Empty;
             string paymentFormLink = string.Empty;
@@ -84,7 +94,7 @@ namespace Umbraco.Commerce.PaymentProviders
                     NetTotalAmount = (int)AmountToMinorUnits(x.TotalPrice.Value.WithoutTax)
                 });
 
-                var shippingMethod = Context.Services.ShippingMethodService.GetShippingMethod(ctx.Order.ShippingInfo.ShippingMethodId.Value);
+                var shippingMethod = await Context.Services.ShippingMethodService.GetShippingMethodAsync(ctx.Order.ShippingInfo.ShippingMethodId.Value);
                 if (shippingMethod != null)
                 {
                     items = items.Append(new NetsOrderItem
@@ -254,7 +264,7 @@ namespace Umbraco.Commerce.PaymentProviders
                     : string.Empty;
 
                 var country = ctx.Order.ShippingInfo.CountryId.HasValue
-                    ? Context.Services.CountryService.GetCountry(ctx.Order.ShippingInfo.CountryId.Value)
+                    ? await Context.Services.CountryService.GetCountryAsync(ctx.Order.ShippingInfo.CountryId.Value)
                     : null;
 
                 var region = country != null ? new RegionInfo(country.Code) : null;
@@ -444,16 +454,16 @@ namespace Umbraco.Commerce.PaymentProviders
                 // Process callback
 
                 var webhookAuthKey = ctx.Order.Properties["netsEasyWebhookAuthKey"]?.Value;
-                
+
                 var clientConfig = GetNetsEasyClientConfig(ctx.Settings);
                 var client = new NetsEasyClient(clientConfig);
 
                 var netsEvent = await GetNetsWebhookEventAsync(ctx, webhookAuthKey, cancellationToken).ConfigureAwait(false);
                 if (netsEvent != null)
                 {
-                    var paymentId = netsEvent.Data?.SelectToken("paymentId")?.Value<string>();
+                    var paymentId = netsEvent.Data?["paymentId"]?.GetValue<string>();
 
-                    var payment = !string.IsNullOrEmpty(paymentId) ? await client.GetPaymentAsync(paymentId, cancellationToken).ConfigureAwait(false) : null;
+                    NetsPaymentDetails payment = !string.IsNullOrEmpty(paymentId) ? await client.GetPaymentAsync(paymentId, cancellationToken).ConfigureAwait(false) : null;
                     if (payment != null)
                     {
                         var amount = (long)payment.Payment.OrderDetails.Amount;
@@ -469,7 +479,7 @@ namespace Umbraco.Commerce.PaymentProviders
                         }
                         else if (netsEvent.Event == NetsEvents.PaymentChargeCreated)
                         {
-                            var chargeId = netsEvent.Data?.SelectToken("chargeId")?.Value<string>();
+                            var chargeId = netsEvent.Data?["chargeId"]?.GetValue<string>();
 
                             return CallbackResult.Ok(
                                 new TransactionInfo
@@ -485,7 +495,7 @@ namespace Umbraco.Commerce.PaymentProviders
                         }
                         else if (netsEvent.Event == NetsEvents.PaymentCancelCreated)
                         {
-                            var cancelId = netsEvent.Data?.SelectToken("cancelId")?.Value<string>();
+                            var cancelId = netsEvent.Data?["cancelId"]?.GetValue<string>();
 
                             return CallbackResult.Ok(
                                 new TransactionInfo
@@ -501,14 +511,15 @@ namespace Umbraco.Commerce.PaymentProviders
                         }
                         else if (netsEvent.Event == NetsEvents.PaymentRefundCompleted)
                         {
-                            var refundId = netsEvent.Data?.SelectToken("refundId")?.Value<string>();
+                            var refundId = netsEvent.Data?["refundId"]?.GetValue<string>();
 
                             return CallbackResult.Ok(
                                 new TransactionInfo
                                 {
                                     TransactionId = paymentId,
                                     AmountAuthorized = AmountFromMinorUnits(amount),
-                                    PaymentStatus = GetPaymentStatus(payment)
+                                    PaymentStatus = await ctx.Order.CalculateRefundableAmountAsync() > 0 ?
+                                        PaymentStatus.PartiallyRefunded : PaymentStatus.Refunded,
                                 },
                                 new Dictionary<string, string>
                                 {
@@ -636,25 +647,51 @@ namespace Umbraco.Commerce.PaymentProviders
             return ApiResult.Empty;
         }
 
-        public override async Task<ApiResult> RefundPaymentAsync(PaymentProviderContext<NetsEasyOneTimeSettings> ctx, CancellationToken cancellationToken = default)
+        public override async Task<ApiResult> RefundPaymentAsync(PaymentProviderContext<NetsEasyOneTimeSettings> context, PaymentProviderOrderRefundRequest refundRequest, CancellationToken cancellationToken = default)
         {
             // Refund payment: https://tech.netspayment.com/easy/api/paymentapi#refundPayment
+            ArgumentNullException.ThrowIfNull(context);
+            ArgumentNullException.ThrowIfNull(refundRequest);
 
             try
             {
-                var clientConfig = GetNetsEasyClientConfig(ctx.Settings);
-                var client = new NetsEasyClient(clientConfig);
+                NetsEasyClientConfig clientConfig = GetNetsEasyClientConfig(context.Settings);
+                NetsEasyClient client = new(clientConfig);
 
-                var transactionId = ctx.Order.TransactionInfo.TransactionId;
-                var chargeId = ctx.Order.Properties["netsEasyChargeId"]?.Value;
+                string transactionId = context.Order.TransactionInfo.TransactionId;
+                string chargeId = context.Order.Properties["netsEasyChargeId"]?.Value;
+
+                var refundedOrderLineWithQuantities = (from orderLine in context.Order.OrderLines
+                   join refundedOrderLine in refundRequest.OrderLines on orderLine.Id equals refundedOrderLine.OrderLineId
+                   select new
+                   {
+                       OrderLine = orderLine,
+                       RefundedQuantity = refundedOrderLine.Quantity,
+                   }).ToList();
+
+                IEnumerable<NetsOrderItem> refundItems = [
+                    new NetsOrderItem
+                    {
+                        Reference = "refund",
+                        Name = "refund",
+                        Quantity = 1,
+                        Unit = "pcs",
+                        UnitPrice = (int)AmountToMinorUnits(refundRequest.RefundAmount),
+                        TaxRate = 0,
+                        TaxAmount = 0,
+                        GrossTotalAmount = (int)AmountToMinorUnits(refundRequest.RefundAmount),
+                        NetTotalAmount = (int)AmountToMinorUnits(refundRequest.RefundAmount),
+                    },
+                ];
 
                 var data = new
                 {
-                    invoice = ctx.Order.OrderNumber,
-                    amount = AmountToMinorUnits(ctx.Order.TransactionInfo.AmountAuthorized.Value)
+                    invoice = context.Order.OrderNumber,
+                    amount = AmountToMinorUnits(refundRequest.RefundAmount),
+                    orderItems = refundItems,
                 };
 
-                var result = await client.RefundPaymentAsync(chargeId, data, cancellationToken).ConfigureAwait(false);
+                NetsRefund result = await client.RefundPaymentAsync(chargeId, data, cancellationToken).ConfigureAwait(false);
                 if (result != null)
                 {
                     return new ApiResult()
@@ -666,8 +703,9 @@ namespace Umbraco.Commerce.PaymentProviders
                         TransactionInfo = new TransactionInfoUpdate()
                         {
                             TransactionId = transactionId,
-                            PaymentStatus = PaymentStatus.Refunded
-                        }
+                            PaymentStatus = await context.Order.CalculateRefundableAmountAsync() == refundRequest.RefundAmount ?
+                                PaymentStatus.Refunded : PaymentStatus.PartiallyRefunded,
+                        },
                     };
                 }
             }

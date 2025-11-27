@@ -1,15 +1,17 @@
-using Newtonsoft.Json;
 using System;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Text;
+using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Umbraco.Commerce.Common.Logging;
-using Umbraco.Commerce.PaymentProviders.Api.Models;
 using Umbraco.Commerce.Core.Api;
 using Umbraco.Commerce.Core.PaymentProviders;
 using Umbraco.Commerce.Extensions;
-using System.Threading;
+using Umbraco.Commerce.PaymentProviders.Api.Models;
 
 namespace Umbraco.Commerce.PaymentProviders
 {
@@ -19,7 +21,8 @@ namespace Umbraco.Commerce.PaymentProviders
     {
         protected ILogger<TSelf> Logger { get; }
 
-        public NetsPaymentProviderBase(UmbracoCommerceContext ctx,
+        protected NetsPaymentProviderBase(
+            UmbracoCommerceContext ctx,
             ILogger<TSelf> logger)
             : base(ctx)
         {
@@ -62,26 +65,23 @@ namespace Umbraco.Commerce.PaymentProviders
             {
                 try
                 {
-                    using (var stream = await ctx.Request.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false))
+                    if (ctx.HttpContext.Request.Body.CanSeek)
                     {
-                        if (stream.CanSeek)
+                        ctx.HttpContext.Request.Body.Seek(0, SeekOrigin.Begin);
+                    }
+
+                    using (var reader = new StreamReader(ctx.HttpContext.Request.Body))
+                    {
+                        var json = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+
+                        if (!string.IsNullOrEmpty(json))
                         {
-                            stream.Seek(0, SeekOrigin.Begin);
-                        }
+                            // Verify "Authorization" header returned from webhook
+                            VerifyAuthorization(ctx.HttpContext.Request, webhookAuthorization);
 
-                        using (var reader = new StreamReader(stream))
-                        {
-                            var json = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+                            netsWebhookEvent = JsonSerializer.Deserialize<NetsWebhookEvent>(json);
 
-                            if (!string.IsNullOrEmpty(json))
-                            {
-                                // Verify "Authorization" header returned from webhook
-                                VerifyAuthorization(ctx.Request, webhookAuthorization);
-
-                                netsWebhookEvent = JsonConvert.DeserializeObject<NetsWebhookEvent>(json);
-
-                                ctx.AdditionalData.Add("Vendr_NetsEasyWebhookEvent", netsWebhookEvent);
-                            }
+                            ctx.AdditionalData.Add("Vendr_NetsEasyWebhookEvent", netsWebhookEvent);
                         }
                     }
                 }
@@ -105,9 +105,9 @@ namespace Umbraco.Commerce.PaymentProviders
             return uri.ToString();
         }
 
-        private void VerifyAuthorization(HttpRequestMessage request, string webhookAuthorization)
+        private void VerifyAuthorization(HttpRequest request, string webhookAuthorization)
         {
-            string authHeader = request.Headers.GetValues("Authorization")?.FirstOrDefault();
+            string authHeader = request.Headers.Authorization;
 
             if (authHeader == null)
                 throw new Exception("The authorization header is not present in the webhook event.");

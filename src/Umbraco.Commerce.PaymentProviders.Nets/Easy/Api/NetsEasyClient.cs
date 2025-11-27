@@ -1,10 +1,10 @@
-using Flurl.Http;
-using Flurl.Http.Configuration;
-using Newtonsoft.Json;
 using System;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+using Flurl.Http;
 using Umbraco.Commerce.PaymentProviders.Api.Models;
+using Umbraco.Commerce.PaymentProviders.Nets.Easy.Api;
 
 namespace Umbraco.Commerce.PaymentProviders.Api
 {
@@ -21,7 +21,7 @@ namespace Umbraco.Commerce.PaymentProviders.Api
         {
             return await RequestAsync("/v1/payments/", async (req, ct) => await req
                 .WithHeader("Content-Type", "application/json")
-                .PostJsonAsync(data, ct)
+                .PostJsonAsync(data, cancellationToken: ct)
                 .ReceiveJson<NetsPaymentResult>().ConfigureAwait(false),
                 cancellationToken).ConfigureAwait(false);
         }
@@ -29,7 +29,7 @@ namespace Umbraco.Commerce.PaymentProviders.Api
         public async Task<NetsPaymentDetails> GetPaymentAsync(string paymentId, CancellationToken cancellationToken = default)
         {
             return await RequestAsync($"/v1/payments/{paymentId}", async (req, ct) => await req
-                .GetJsonAsync<NetsPaymentDetails>().ConfigureAwait(false),
+                .GetJsonAsync<NetsPaymentDetails>(cancellationToken: ct).ConfigureAwait(false),
                 cancellationToken).ConfigureAwait(false);
         }
 
@@ -37,7 +37,7 @@ namespace Umbraco.Commerce.PaymentProviders.Api
         {
             return await RequestAsync($"/v1/payments/{paymentId}/cancels", async (req, ct) => await req
                 .WithHeader("Content-Type", "application/json")
-                .PostJsonAsync(data, ct)
+                .PostJsonAsync(data, cancellationToken: ct)
                 .ReceiveJson<string>().ConfigureAwait(false),
                 cancellationToken).ConfigureAwait(false);
         }
@@ -46,7 +46,7 @@ namespace Umbraco.Commerce.PaymentProviders.Api
         {
             return await RequestAsync($"/v1/payments/{paymentId}/charges", async (req, ct) => await req
                 .WithHeader("Content-Type", "application/json")
-                .PostJsonAsync(data, ct)
+                .PostJsonAsync(data, cancellationToken: ct)
                 .ReceiveJson<NetsCharge>().ConfigureAwait(false),
                 cancellationToken).ConfigureAwait(false);
         }
@@ -55,7 +55,7 @@ namespace Umbraco.Commerce.PaymentProviders.Api
         {
             return await RequestAsync($"/v1/charges/{chargeId}/refunds", async (req, ct) => await req
                 .WithHeader("Content-Type", "application/json")
-                .PostJsonAsync(data, ct)
+                .PostJsonAsync(data, cancellationToken: ct)
                 .ReceiveJson<NetsRefund>().ConfigureAwait(false),
                 cancellationToken).ConfigureAwait(false);
         }
@@ -67,15 +67,14 @@ namespace Umbraco.Commerce.PaymentProviders.Api
             try
             {
                 var req = new FlurlRequest(_config.BaseUrl + url)
-                        .ConfigureRequest(x =>
+                        .WithSettings(x =>
                         {
-                            var jsonSettings = new JsonSerializerSettings
+                            var jsonSettings = new System.Text.Json.JsonSerializerOptions
                             {
-                                NullValueHandling = NullValueHandling.Ignore,
-                                DefaultValueHandling = DefaultValueHandling.Include,
-                                MissingMemberHandling = MissingMemberHandling.Ignore
+                                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                                UnmappedMemberHandling = JsonUnmappedMemberHandling.Skip,
                             };
-                            x.JsonSerializer = new NewtonsoftJsonSerializer(jsonSettings);
+                            x.JsonSerializer = new CustomFlurlJsonSerializer(jsonSettings);
                         })
                         .WithHeader("Authorization", _config.Authorization);
 

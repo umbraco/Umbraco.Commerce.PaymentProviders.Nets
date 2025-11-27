@@ -1,10 +1,10 @@
-﻿using Newtonsoft.Json;
+﻿using System.Text.Json.Serialization;
 
 namespace Umbraco.Commerce.PaymentProviders.Api.Models
 {
     public class NetsPaymentResult
     {
-        [JsonProperty("paymentId")]
+        [JsonPropertyName("paymentId")]
         public string PaymentId { get; set; }
     }
 }

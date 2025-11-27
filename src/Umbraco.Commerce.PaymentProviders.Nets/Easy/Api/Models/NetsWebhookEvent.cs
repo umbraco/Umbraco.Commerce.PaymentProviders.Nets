@@ -1,23 +1,23 @@
-﻿using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 
 namespace Umbraco.Commerce.PaymentProviders.Api.Models
 {
     public class NetsWebhookEvent
     {
-        [JsonProperty("id")]
+        [JsonPropertyName("id")]
         public string Id { get; set; }
 
-        [JsonProperty("merchantId")]
-        public string MerchantId { get; set; }
+        [JsonPropertyName("merchantId")]
+        public int MerchantId { get; set; }
 
-        [JsonProperty("timestamp")]
+        [JsonPropertyName("timestamp")]
         public string Timestamp { get; set; }
 
-        [JsonProperty("event")]
+        [JsonPropertyName("event")]
         public string Event { get; set; }
 
-        [JsonProperty("data")]
-        public JObject Data { get; set; }
+        [JsonPropertyName("data")]
+        public JsonObject Data { get; set; }
     }
 }
