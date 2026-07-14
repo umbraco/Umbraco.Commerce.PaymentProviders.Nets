@@ -74,7 +74,13 @@ namespace Umbraco.Commerce.PaymentProviders
             string paymentId = string.Empty;
             string paymentFormLink = string.Empty;
 
-            var webhookAuthKey = Guid.NewGuid().ToString();
+            // Reuse the webhook authorization key already persisted on the order, if any.
+            // GenerateFormAsync can run several times for the same order (e.g. repeated token
+            // requests), and each run registers webhooks at Nets carrying this key. Generating a
+            // fresh key every time overwrites the persisted value, so callbacks for an earlier
+            // payment arrive with a key that no longer matches and fail authorization. Keeping the
+            // key stable per order keeps every registered webhook verifiable. See issue #786.
+            var webhookAuthKey = NetsWebhookAuthorization.ResolveAuthKey(ctx.Order.Properties["netsEasyWebhookAuthKey"]?.Value);
 
             try
             {
