@@ -259,6 +259,29 @@ namespace Umbraco.Commerce.PaymentProviders
                     }
                 }
 
+                // Each line amount and the order amount are rounded to minor units independently,
+                // so their sums can drift by a minor unit or two (e.g. when a percentage discount
+                // is applied). Nets Easy rejects a payment whose order amount does not exactly match
+                // the sum of the line gross amounts, so absorb any difference in a rounding line so
+                // the items always sum to the charged amount. See issue #838.
+                var roundingAdjustment = NetsOrderReconciliation.CalculateRoundingAdjustment(orderAmount, items);
+                if (roundingAdjustment != 0)
+                {
+                    var roundingAmount = (int)roundingAdjustment;
+                    items = items.Append(new NetsOrderItem
+                    {
+                        Reference = "rounding-adjustment",
+                        Name = "Rounding adjustment",
+                        Quantity = 1,
+                        Unit = "pcs",
+                        UnitPrice = roundingAmount,
+                        TaxRate = 0,
+                        TaxAmount = 0,
+                        GrossTotalAmount = roundingAmount,
+                        NetTotalAmount = roundingAmount
+                    });
+                }
+
                 string company = !string.IsNullOrWhiteSpace(ctx.Settings.BillingCompanyPropertyAlias)
                     ? ctx.Order.Properties[ctx.Settings.BillingCompanyPropertyAlias]
                     : string.Empty;
