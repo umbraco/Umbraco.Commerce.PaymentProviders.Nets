@@ -74,7 +74,13 @@ namespace Umbraco.Commerce.PaymentProviders
             string paymentId = string.Empty;
             string paymentFormLink = string.Empty;
 
-            var webhookAuthKey = Guid.NewGuid().ToString();
+            // Reuse the webhook authorization key already persisted on the order, if any.
+            // GenerateFormAsync can run several times for the same order (e.g. repeated token
+            // requests), and each run registers webhooks at Nets carrying this key. Generating a
+            // fresh key every time overwrites the persisted value, so callbacks for an earlier
+            // payment arrive with a key that no longer matches and fail authorization. Keeping the
+            // key stable per order keeps every registered webhook verifiable. See issue #786.
+            var webhookAuthKey = NetsWebhookAuthorization.ResolveAuthKey(ctx.Order.Properties["netsEasyWebhookAuthKey"]?.Value);
 
             try
             {
@@ -257,6 +263,29 @@ namespace Umbraco.Commerce.PaymentProviders
                             });
                         }
                     }
+                }
+
+                // Each line amount and the order amount are rounded to minor units independently,
+                // so their sums can drift by a minor unit or two (e.g. when a percentage discount
+                // is applied). Nets Easy rejects a payment whose order amount does not exactly match
+                // the sum of the line gross amounts, so absorb any difference in a rounding line so
+                // the items always sum to the charged amount. See issue #838.
+                var roundingAdjustment = NetsOrderReconciliation.CalculateRoundingAdjustment(orderAmount, items);
+                if (roundingAdjustment != 0)
+                {
+                    var roundingAmount = (int)roundingAdjustment;
+                    items = items.Append(new NetsOrderItem
+                    {
+                        Reference = "rounding-adjustment",
+                        Name = "Rounding adjustment",
+                        Quantity = 1,
+                        Unit = "pcs",
+                        UnitPrice = roundingAmount,
+                        TaxRate = 0,
+                        TaxAmount = 0,
+                        GrossTotalAmount = roundingAmount,
+                        NetTotalAmount = roundingAmount
+                    });
                 }
 
                 string company = !string.IsNullOrWhiteSpace(ctx.Settings.BillingCompanyPropertyAlias)
