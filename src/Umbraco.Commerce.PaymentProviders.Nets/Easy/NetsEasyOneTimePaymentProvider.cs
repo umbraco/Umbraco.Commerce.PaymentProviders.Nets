@@ -758,21 +758,7 @@ namespace Umbraco.Commerce.PaymentProviders
 
         protected PaymentStatus GetPaymentStatus(NetsPaymentDetails paymentDetails)
         {
-            var payment = paymentDetails.Payment;
-
-            if (payment.Summary.RefundedAmount > 0)
-                return PaymentStatus.Refunded;
-
-            if (payment.Summary.CancelledAmount > 0)
-                return PaymentStatus.Cancelled;
-
-            if (payment.Summary.ChargedAmount > 0)
-                return PaymentStatus.Captured;
-
-            if (payment.Summary.ReservedAmount > 0)
-                return PaymentStatus.Authorized;
-
-            return PaymentStatus.Initialized;
+            return NetsPaymentStatusResolver.Resolve(paymentDetails.Payment.Summary);
         }
 
         protected NetsEasyClientConfig GetNetsEasyClientConfig(NetsEasySettingsBase settings)
