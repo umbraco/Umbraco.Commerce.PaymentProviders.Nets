@@ -460,7 +460,7 @@ namespace Umbraco.Commerce.PaymentProviders
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Nets Easy - error creating payment.");
+                LogOperationError(ex, "CreatePayment", ctx.Order, paymentId);
             }
 
             var checkoutKey = ctx.Settings.TestMode ? ctx.Settings.TestCheckoutKey : ctx.Settings.LiveCheckoutKey;
@@ -478,6 +478,8 @@ namespace Umbraco.Commerce.PaymentProviders
 
         public override async Task<CallbackResult> ProcessCallbackAsync(PaymentProviderContext<NetsEasyOneTimeSettings> ctx, CancellationToken cancellationToken = default)
         {
+            string paymentId = null;
+
             try
             {
                 // Process callback
@@ -490,7 +492,7 @@ namespace Umbraco.Commerce.PaymentProviders
                 var netsEvent = await GetNetsWebhookEventAsync(ctx, webhookAuthKey, cancellationToken).ConfigureAwait(false);
                 if (netsEvent != null)
                 {
-                    var paymentId = netsEvent.Data?["paymentId"]?.GetValue<string>();
+                    paymentId = netsEvent.Data?["paymentId"]?.GetValue<string>();
 
                     NetsPaymentDetails payment = !string.IsNullOrEmpty(paymentId) ? await client.GetPaymentAsync(paymentId, cancellationToken).ConfigureAwait(false) : null;
                     if (payment != null)
@@ -560,7 +562,7 @@ namespace Umbraco.Commerce.PaymentProviders
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Nets Easy - ProcessCallback");
+                LogOperationError(ex, "ProcessCallback", ctx.Order, paymentId);
             }
 
             return CallbackResult.BadRequest();
@@ -593,7 +595,7 @@ namespace Umbraco.Commerce.PaymentProviders
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Nets Easy - FetchPaymentStatus");
+                LogOperationError(ex, "FetchPaymentStatus", ctx.Order, null);
             }
 
             return ApiResult.Empty;
@@ -629,7 +631,7 @@ namespace Umbraco.Commerce.PaymentProviders
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Nets Easy - CancelPayment");
+                LogOperationError(ex, "CancelPayment", ctx.Order, null);
             }
 
             return ApiResult.Empty;
@@ -675,7 +677,7 @@ namespace Umbraco.Commerce.PaymentProviders
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Nets Easy - CapturePayment");
+                LogOperationError(ex, "CapturePayment", ctx.Order, null);
             }
 
             return ApiResult.Empty;
@@ -745,7 +747,7 @@ namespace Umbraco.Commerce.PaymentProviders
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Nets Easy - RefundPayment");
+                LogOperationError(ex, "RefundPayment", context.Order, null);
             }
 
             return ApiResult.Empty;
