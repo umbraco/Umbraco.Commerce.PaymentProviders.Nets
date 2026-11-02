@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Umbraco.Commerce.Common.Logging;
 using Umbraco.Commerce.Core.Api;
+using Umbraco.Commerce.Core.Models;
 using Umbraco.Commerce.Core.PaymentProviders;
 using Umbraco.Commerce.Extensions;
 using Umbraco.Commerce.PaymentProviders.Api.Models;
@@ -87,12 +88,27 @@ namespace Umbraco.Commerce.PaymentProviders
                 }
                 catch (Exception ex)
                 {
-                    Logger.Error(ex, "Nets Easy - GetNetsWebhookEvent");
+                    LogOperationError(ex, "GetNetsWebhookEvent", ctx.Order, null);
                 }
             }
 
             return netsWebhookEvent;
         }
+
+        /// <summary>
+        /// Logs a failed Nets operation with the order it was for, so the failure can be traced.
+        /// </summary>
+        internal void LogOperationError(Exception exception, string operation, OrderReadOnly order, string paymentId)
+            => LogOperationError(exception, operation, order?.OrderNumber, order?.CartNumber, string.IsNullOrEmpty(paymentId) ? order?.TransactionInfo?.TransactionId : paymentId);
+
+        internal void LogOperationError(Exception exception, string operation, string orderNumber, string cartNumber, string paymentId)
+            => Logger.Error(
+                exception,
+                "Nets Easy - {Operation} failed. OrderNumber: {OrderNumber}, CartNumber: {CartNumber}, PaymentId: {PaymentId}",
+                operation,
+                orderNumber,
+                cartNumber,
+                paymentId);
 
         protected static string ForceHttps(string url)
         {
