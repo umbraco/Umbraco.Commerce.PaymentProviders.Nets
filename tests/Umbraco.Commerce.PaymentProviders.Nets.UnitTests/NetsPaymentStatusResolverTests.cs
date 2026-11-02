@@ -30,5 +30,16 @@ namespace Umbraco.Commerce.PaymentProviders.Nets.UnitTests
 
             NetsPaymentStatusResolver.Resolve(summary).Should().Be(PaymentStatus.Captured);
         }
+
+        [Theory]
+        [InlineData(10000, 0, 10000, PaymentStatus.Cancelled)]
+        [InlineData(10000, 0, 0, PaymentStatus.Authorized)]
+        [InlineData(0, 0, 0, PaymentStatus.Initialized)]
+        public void Resolve_Without_Refund_Maps_Reserved_Charged_And_Cancelled(int reserved, int charged, int cancelled, PaymentStatus expected)
+        {
+            var summary = new NetsSummary { ReservedAmount = reserved, ChargedAmount = charged, CancelledAmount = cancelled };
+
+            NetsPaymentStatusResolver.Resolve(summary).Should().Be(expected);
+        }
     }
 }

@@ -35,10 +35,11 @@ namespace Umbraco.Commerce.PaymentProviders.Api
 
         public async Task<string> CancelPaymentAsync(string paymentId, object data, CancellationToken cancellationToken = default)
         {
+            // Nets answers a cancel with 204 No Content, so read the body as text rather than JSON
             return await RequestAsync($"/v1/payments/{paymentId}/cancels", async (req, ct) => await req
                 .WithHeader("Content-Type", "application/json")
                 .PostJsonAsync(data, cancellationToken: ct)
-                .ReceiveJson<string>().ConfigureAwait(false),
+                .ReceiveString().ConfigureAwait(false),
                 cancellationToken).ConfigureAwait(false);
         }
 
